@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,6 +25,8 @@ type WSMessage struct {
 	Path   string `json:"path"`
 }
 
+var envPath string
+
 func setupRoutes(app *fiber.App) {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
@@ -35,7 +38,7 @@ func setupRoutes(app *fiber.App) {
 			return err
 		}
 
-		envPath := os.Getenv("FILE_PATH")
+		envPath = os.Getenv("FILE_PATH")
 		if !strings.HasPrefix(m.Path, envPath) {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid path: "+m.Path)
 		}
@@ -56,6 +59,15 @@ func setupRoutes(app *fiber.App) {
 				break
 			}
 
+			remoteAddr := c.RemoteAddr().String()
+			ip, port, _ := net.SplitHostPort(remoteAddr)
+
+			// Create a map to hold the result.
+			result := make(map[string]string)
+
+			result["ip"] = ip
+			result["port"] = port
+
 			m := new(WSMessage)
 			err = json.Unmarshal(msg, m)
 			if err != nil {
@@ -65,15 +77,23 @@ func setupRoutes(app *fiber.App) {
 
 			switch m.Action {
 			case "mount":
-				err := mountFile(m.Path)
-				if err != nil {
-					fmt.Println("Error mounting file:", err)
-				} else {
-					fmt.Println("Mounted file at path:", m.Path)
-				}
+				mRes := mountFile(m.Path)
+
+				result["cmd"] = "mount"
+				result["result"] = mRes
+				result["path"] = m.Path
+				jsonData, _ := json.Marshal(result)
+
+				c.WriteMessage(websocket.TextMessage, jsonData)
+
 			case "unmount":
 				unmountFile(m.Path)
-				fmt.Println("Unmounted file at path:", m.Path)
+				result["cmd"] = "unmount"
+				result["result"] = m.Path
+				result["path"] = m.Path
+				jsonData, _ := json.Marshal(result)
+
+				c.WriteMessage(websocket.TextMessage, jsonData)
 			case "status":
 				mountedFiles, err := getStatus()
 				if err != nil {
@@ -84,6 +104,9 @@ func setupRoutes(app *fiber.App) {
 				}
 			default:
 				fmt.Println("Unknown action:", m.Action)
+				result["cmd"] = "unknown"
+				jsonData, _ := json.Marshal(result)
+				c.WriteMessage(websocket.TextMessage, jsonData)
 			}
 		}
 	}))
@@ -125,14 +148,14 @@ func setupRoutes(app *fiber.App) {
 		return c.JSON(fileList)
 	})
 
-	app.Get("/row/:path/:index", func(c *fiber.Ctx) error {
-		path := c.Params("path")
-		indexStr := c.Params("index")
+	app.Get("/row", func(c *fiber.Ctx) error {
+		path := c.Query("path")
+		indexStr := c.Query("index")
 		index, err := strconv.Atoi(indexStr)
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid index: "+indexStr)
 		}
-
+		//fmt.Println(contentMap)
 		content, ok := contentMap[path]
 		if !ok || index < 0 || index >= len(content) {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid path or index: "+path+"/"+indexStr)

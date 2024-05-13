@@ -23,7 +23,7 @@ func main() {
 	envPath := os.Getenv("FILE_PATH")
 	if envPath == "" {
 		envPath = "./host"
-		os.Setenv("FILE_PATH", envPath)
+		//os.Setenv("FILE_PATH", envPath)
 	}
 
 	envPort := os.Getenv("PORT")
