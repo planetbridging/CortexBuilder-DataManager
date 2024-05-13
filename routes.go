@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,6 +17,11 @@ type File struct {
 	Name string `json:"name"`
 	Size string `json:"size"`
 	Type string `json:"type"`
+}
+
+type WSMessage struct {
+	Action string `json:"action"`
+	Path   string `json:"path"`
 }
 
 func setupRoutes(app *fiber.App) {
@@ -49,18 +56,34 @@ func setupRoutes(app *fiber.App) {
 				break
 			}
 
-			switch string(msg) {
-			case "case1":
-				fmt.Println("Handling case 1")
-				// Handle case 1
-			case "case2":
-				fmt.Println("Handling case 2")
-				// Handle case 2
-			case "case3":
-				fmt.Println("Handling case 3")
-				// Handle case 3
+			m := new(WSMessage)
+			err = json.Unmarshal(msg, m)
+			if err != nil {
+				fmt.Println("Invalid JSON:", err)
+				break
+			}
+
+			switch m.Action {
+			case "mount":
+				err := mountFile(m.Path)
+				if err != nil {
+					fmt.Println("Error mounting file:", err)
+				} else {
+					fmt.Println("Mounted file at path:", m.Path)
+				}
+			case "unmount":
+				unmountFile(m.Path)
+				fmt.Println("Unmounted file at path:", m.Path)
+			case "status":
+				mountedFiles, err := getStatus()
+				if err != nil {
+					fmt.Println("Error getting status:", err)
+				} else {
+					jsonData, _ := json.Marshal(mountedFiles)
+					c.WriteMessage(websocket.TextMessage, jsonData)
+				}
 			default:
-				fmt.Println("Unknown case:", string(msg))
+				fmt.Println("Unknown action:", m.Action)
 			}
 		}
 	}))
@@ -100,6 +123,22 @@ func setupRoutes(app *fiber.App) {
 		}
 
 		return c.JSON(fileList)
+	})
+
+	app.Get("/row/:path/:index", func(c *fiber.Ctx) error {
+		path := c.Params("path")
+		indexStr := c.Params("index")
+		index, err := strconv.Atoi(indexStr)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid index: "+indexStr)
+		}
+
+		content, ok := contentMap[path]
+		if !ok || index < 0 || index >= len(content) {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid path or index: "+path+"/"+indexStr)
+		}
+
+		return c.JSON(content[index])
 	})
 
 }
