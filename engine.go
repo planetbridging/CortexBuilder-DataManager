@@ -26,8 +26,10 @@ func main() {
 		os.Setenv("FILE_PATH", envPath)
 	}
 
-	if _, err := os.Stat(envPath); os.IsNotExist(err) {
-		os.Mkdir(envPath, 0755)
+	envPort := os.Getenv("PORT")
+
+	if envPort == "" {
+		envPort = "4123"
 	}
 
 	createTestData(envPath)
@@ -38,7 +40,7 @@ func main() {
 
 	setupRoutes(app)
 
-	err = app.Listen(":3000")
+	err = app.Listen(":" + envPort)
 	if err != nil {
 		fmt.Println(err)
 	}
