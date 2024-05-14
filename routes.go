@@ -51,6 +51,25 @@ func setupRoutes(app *fiber.App) {
 		return c.SendString("File created successfully")
 	})
 
+	app.Post("/createfolder", func(c *fiber.Ctx) error {
+		m := new(Message)
+		if err := c.BodyParser(m); err != nil {
+			return err
+		}
+
+		envPath := os.Getenv("FILE_PATH")
+		if !strings.HasPrefix(m.Path, envPath) {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid path: "+m.Path)
+		}
+
+		err := os.MkdirAll(m.Path, 0755)
+		if err != nil {
+			return err
+		}
+
+		return c.SendString("Folder created successfully")
+	})
+
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		for {
 			_, msg, err := c.ReadMessage()
