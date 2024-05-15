@@ -14,13 +14,15 @@ type Message struct {
 	Data string `json:"data"`
 }
 
+var envPath string
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Println("Error loading .env file")
 	}
 
-	envPath := os.Getenv("FILE_PATH")
+	envPath = os.Getenv("FILE_PATH")
 	if envPath == "" {
 		envPath = "./host"
 		//os.Setenv("FILE_PATH", envPath)

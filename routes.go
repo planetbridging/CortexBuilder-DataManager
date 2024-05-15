@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"runtime"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
@@ -24,8 +25,6 @@ type WSMessage struct {
 	Action string `json:"action"`
 	Path   string `json:"path"`
 }
-
-var envPath string
 
 func setupRoutes(app *fiber.App) {
 	app.Get("/", func(c *fiber.Ctx) error {
@@ -57,7 +56,7 @@ func setupRoutes(app *fiber.App) {
 			return err
 		}
 
-		envPath := os.Getenv("FILE_PATH")
+		//envPath := os.Getenv("FILE_PATH")
 		if !strings.HasPrefix(m.Path, envPath) {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid path: "+m.Path)
 		}
@@ -121,6 +120,22 @@ func setupRoutes(app *fiber.App) {
 					jsonData, _ := json.Marshal(mountedFiles)
 					c.WriteMessage(websocket.TextMessage, jsonData)
 				}
+			case "sysinfo":
+		
+				// Get some basic computer specs
+				os := runtime.GOOS
+				arch := runtime.GOARCH
+				numCPU := runtime.NumCPU()
+
+	
+				result["cachePath"] = envPath
+				result["os"] = os
+				result["arch"] = arch
+				result["numCPU"] = strconv.Itoa(numCPU)
+	
+				jsonData, _ := json.Marshal(result)
+	
+				c.WriteMessage(websocket.TextMessage, jsonData)
 			default:
 				fmt.Println("Unknown action:", m.Action)
 				result["cmd"] = "unknown"
@@ -131,7 +146,7 @@ func setupRoutes(app *fiber.App) {
 	}))
 
 	app.Get("/path/*", func(c *fiber.Ctx) error {
-		envPath := os.Getenv("FILE_PATH")
+		//envPath := os.Getenv("FILE_PATH")
 		path := c.Params("*")
 		if path == "" {
 			path = envPath // Default to envPath if no path is provided
