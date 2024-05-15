@@ -127,7 +127,7 @@ func setupRoutes(app *fiber.App) {
 				arch := runtime.GOARCH
 				numCPU := runtime.NumCPU()
 
-	
+				result["cmd"] = "sysinfo"
 				result["cachePath"] = envPath
 				result["os"] = os
 				result["arch"] = arch
