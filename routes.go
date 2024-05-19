@@ -7,9 +7,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
-	"runtime"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
@@ -121,7 +121,7 @@ func setupRoutes(app *fiber.App) {
 					c.WriteMessage(websocket.TextMessage, jsonData)
 				}
 			case "sysinfo":
-		
+
 				// Get some basic computer specs
 				os := runtime.GOOS
 				arch := runtime.GOARCH
@@ -132,9 +132,9 @@ func setupRoutes(app *fiber.App) {
 				result["os"] = os
 				result["arch"] = arch
 				result["numCPU"] = strconv.Itoa(numCPU)
-	
+
 				jsonData, _ := json.Marshal(result)
-	
+
 				c.WriteMessage(websocket.TextMessage, jsonData)
 			default:
 				fmt.Println("Unknown action:", m.Action)
@@ -144,18 +144,26 @@ func setupRoutes(app *fiber.App) {
 			}
 		}
 	}))
-
 	app.Get("/path/*", func(c *fiber.Ctx) error {
 		//envPath := os.Getenv("FILE_PATH")
+		//fmt.Println(envPath)
 		path := c.Params("*")
-		if path == "" {
-			path = envPath // Default to envPath if no path is provided
-		} else {
-			path = filepath.Join(envPath, path) // Join envPath and requested path
+		absPath, err := filepath.Abs(filepath.Join(envPath, path)) // Compute absolute path
+		if err != nil {
+			return err
+		}
+		path = absPath
+
+		absEnvPath, err := filepath.Abs(envPath) // Compute absolute path of envPath
+		if err != nil {
+			return err
 		}
 
+		//fmt.Println(absEnvPath)
+		//fmt.Println(path)
+
 		// Check if the path is within the envPath
-		if !strings.HasPrefix(path, envPath) {
+		if !strings.HasPrefix(path, filepath.Clean(absEnvPath)) {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid path: "+path)
 		}
 
