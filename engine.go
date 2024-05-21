@@ -28,6 +28,8 @@ func main() {
 		//os.Setenv("FILE_PATH", envPath)
 	}
 
+	setupEmptyHost()
+
 	envPort := os.Getenv("PORT")
 
 	if envPort == "" {
@@ -50,4 +52,29 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+
+func setupEmptyHost(){
+	// Check if directory exists
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		// Create directory
+		errDir := os.MkdirAll(envPath, 0755)
+		if errDir != nil {
+			panic(err)
+		}
+	}
+
+	// Create config.json file in the directory
+	filePath := filepath.Join(envPath, "config.json")
+	file, err := os.Create(filePath)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	// Write some example data to the file
+	file.WriteString(`{
+		"exampleKey": "exampleValue"
+	}`)
 }
