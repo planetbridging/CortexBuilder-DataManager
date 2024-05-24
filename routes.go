@@ -31,24 +31,64 @@ func setupRoutes(app *fiber.App) {
 		return c.SendString("Hello, World!")
 	})
 
+	app.Get("/files/*", func(c *fiber.Ctx) error {
+		// Get the requested file path
+		requestedPath := c.Params("*")
+
+		// Compute absolute path of the requested file
+		absPath, err := filepath.Abs(filepath.Join(envPath, requestedPath))
+		if err != nil {
+			return err
+		}
+
+		// Compute absolute path of envPath
+		absEnvPath, err := filepath.Abs(envPath)
+		if err != nil {
+			return err
+		}
+
+		// Check if the requested file is within the envPath
+		if !strings.HasPrefix(absPath, filepath.Clean(absEnvPath)+string(os.PathSeparator)) {
+			return fiber.NewError(fiber.StatusForbidden, "Access denied")
+		}
+
+		// Serve the file if it is within the envPath
+		return c.SendFile(absPath)
+	})
+
 	app.Post("/createfile", func(c *fiber.Ctx) error {
 		m := new(Message)
 		if err := c.BodyParser(m); err != nil {
 			return err
 		}
-
-		envPath = os.Getenv("FILE_PATH")
-		if !strings.HasPrefix(m.Path, envPath) {
-			return fiber.NewError(fiber.StatusBadRequest, "invalid path: "+m.Path)
-		}
-
-		err := ioutil.WriteFile(m.Path, []byte(m.Data), 0644)
+	
+		// Compute absolute path of the requested path
+		absPath, err := filepath.Abs(filepath.Join(envPath, m.Path))
 		if err != nil {
 			return err
 		}
-
+		m.Path = absPath
+	
+		// Compute absolute path of envPath
+		absEnvPath, err := filepath.Abs(envPath)
+		if err != nil {
+			return err
+		}
+	
+		// Check if the path is within the envPath
+		if !strings.HasPrefix(m.Path, filepath.Clean(absEnvPath) + string(os.PathSeparator)) {
+			return fiber.NewError(fiber.StatusBadRequest, "invalid path: "+m.Path)
+		}
+	
+		// Write file with permissions
+		err = ioutil.WriteFile(m.Path, []byte(m.Data), 0644)
+		if err != nil {
+			return err
+		}
+	
 		return c.SendString("File created successfully")
 	})
+	
 
 	app.Post("/createfolder", func(c *fiber.Ctx) error {
 		m := new(Message)
@@ -239,7 +279,7 @@ func setupRoutes(app *fiber.App) {
 		for i := 0; i < request.SpawnCount; i++ {
 			model := randomizeNetworkStaticTesting()
 
-			fmt.Println("testing")
+			fmt.Println("testing",model)
 		}
 
 		// Here, you would add your logic to handle the training initialization
