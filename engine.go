@@ -75,6 +75,6 @@ func setupEmptyHost(){
 
 	// Write some example data to the file
 	file.WriteString(`{
-		"exampleKey": "exampleValue"
+		"setProjectPath": ""
 	}`)
 }
