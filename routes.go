@@ -260,33 +260,4 @@ func setupRoutes(app *fiber.App) {
 		return c.JSON(content[index])
 	})
 
-	app.Post("/initialize", func(c *fiber.Ctx) error {
-		var request struct {
-			InitializePath     string `json:"networkType"`
-			SpawnCount       int    `json:"spawnCount"`
-		}
-
-		if err := c.BodyParser(&request); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "cannot parse request"})
-		}
-
-		fmt.Printf("Received initialization request: %+v\n", request)
-
-		// Generate a random model
-		//randomModel := randomizeNetworkStaticTesting()
-		//fmt.Println("Generated Model:", randomModel)
-
-		for i := 0; i < request.SpawnCount; i++ {
-			model := randomizeNetworkStaticTesting()
-
-			fmt.Println("testing",model)
-		}
-
-		// Here, you would add your logic to handle the training initialization
-		// For example, setting up configurations, preparing datasets, etc.
-
-		return c.Status(fiber.StatusOK).SendString("Training initialization started successfully")
-	})
-
-
 }
