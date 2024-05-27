@@ -48,6 +48,8 @@ func main() {
 
 	setupRoutes(app)
 
+	go startTcpServer()
+
 	err = app.Listen(":" + envPort)
 	if err != nil {
 		fmt.Println(err)
