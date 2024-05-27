@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -55,40 +56,27 @@ func (h *Hub) RemoveClient(addr string) {
 	h.removeClientChan <- addr
 }
 
-func (h *Hub) ReconnectClient(client *Client) {
-	for {
-		conn, err := net.Dial("tcp", client.Addr)
-		if err == nil {
-			client.Conn = conn
-			client.LastSeen = time.Now()
-			h.AddClient(client)
-			go handleConnection(h, client)
-			fmt.Printf("Reconnected to client: %s\n", client.Addr)
-			return
-		}
-		time.Sleep(1 * time.Second)
-	}
-}
-
-func (h *Hub) MonitorClients() {
-	for {
-		time.Sleep(1 * time.Second)
-		for addr, client := range h.clients {
-			if time.Since(client.LastSeen) > 5*time.Second {
-				client.Conn.Close()
-				h.RemoveClient(addr)
-				go h.ReconnectClient(client)
-			}
-		}
-	}
-}
-
-func handleConnection(hub *Hub, client *Client) {
+func handleConnection(hub *Hub, client *Client, password string) {
 	defer client.Conn.Close()
+
+	// Authentication
+	buf := make([]byte, 1024)
+	n, err := client.Conn.Read(buf)
+	if err != nil {
+		hub.RemoveClient(client.Addr)
+		return
+	}
+
+	if string(buf[:n]) != password {
+		fmt.Printf("Client %s provided wrong password\n", client.Addr)
+		hub.RemoveClient(client.Addr)
+		return
+	}
+
+	client.Conn.Write([]byte("Authenticated"))
 
 	addr := client.Conn.RemoteAddr().String()
 
-	buf := make([]byte, 1024)
 	for {
 		n, err := client.Conn.Read(buf)
 		if err != nil {
@@ -122,11 +110,17 @@ func handleConnection(hub *Hub, client *Client) {
 	}
 }
 
-func startTcpServer() {
+func startTcpServer(password string) {
 	hub := NewHub()
 	go hub.Run()
 
-	listener, err := net.Listen("tcp", ":12345")
+	tlsConfig, err := generateTLSConfig()
+	if err != nil {
+		fmt.Printf("Error generating TLS config: %v\n", err)
+		return
+	}
+
+	listener, err := tls.Listen("tcp", ":12345", tlsConfig)
 	if err != nil {
 		fmt.Printf("Error starting server: %v\n", err)
 		return
@@ -146,6 +140,6 @@ func startTcpServer() {
 			Conn: conn,
 			Addr: conn.RemoteAddr().String(),
 		}
-		go handleConnection(hub, client)
+		go handleConnection(hub, client, password)
 	}
 }

@@ -15,6 +15,7 @@ type Message struct {
 }
 
 var envPath string
+var envPWD string
 
 func main() {
 	err := godotenv.Load()
@@ -48,7 +49,15 @@ func main() {
 
 	setupRoutes(app)
 
-	go startTcpServer()
+
+
+	envPWD = os.Getenv("SERVERPWD")
+	if envPWD == "" {
+		envPWD = "securepassword"
+		//os.Setenv("FILE_PATH", envPath)
+	}
+
+	go startTcpServer(envPWD)
 
 	err = app.Listen(":" + envPort)
 	if err != nil {
