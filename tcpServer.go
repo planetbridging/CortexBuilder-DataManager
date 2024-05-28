@@ -6,6 +6,11 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"log"
+	"runtime"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 type ServerInfo struct {
@@ -91,10 +96,31 @@ func handleConnection(hub *Hub, client *Client, password string) {
 		var response []byte
 		switch message {
 		case "ping":
+
+			// Get OS info
+			osInfo := runtime.GOOS
+
+			// Get RAM info
+			vmStat, err := mem.VirtualMemory()
+			if err != nil {
+				log.Fatalf("Error getting memory info: %v", err)
+			}
+			ramInfo := fmt.Sprintf("%.2fGB", float64(vmStat.Total)/(1024*1024*1024))
+
+			// Get CPU info
+			cpuInfo, err := cpu.Info()
+			if err != nil {
+				log.Fatalf("Error getting CPU info: %v", err)
+			}
+			cpuModel := ""
+			if len(cpuInfo) > 0 {
+				cpuModel = fmt.Sprintf("%d cores %s", cpuInfo[0].Cores, cpuInfo[0].ModelName)
+			}
+
 			serverInfo := ServerInfo{
-				OS:           "Linux",
-				RAM:          "16GB",
-				CPU:          "4 cores",
+				OS:           osInfo,
+				RAM:          ramInfo,
+				CPU:          cpuModel,
 				ComputerType: "data",
 			}
 			response, err = json.Marshal(serverInfo)
