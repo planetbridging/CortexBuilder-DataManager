@@ -78,14 +78,25 @@ func setupEmptyHost(){
 
 	// Create config.json file in the directory
 	filePath := filepath.Join(envPath, "config.json")
-	file, err := os.Create(filePath)
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
+	// Check if the file exists
+	if _, err := os.Stat(filePath); err == nil {
+		// File exists, do nothing
+		fmt.Println("Config file already exists, doing nothing.")
+	} else if os.IsNotExist(err) {
+		// File does not exist, create it
+		file, err := os.Create(filePath)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
 
-	// Write some example data to the file
-	file.WriteString(`{
-		"setProjectPath": ""
-	}`)
+		// Write some example data to the file
+		file.WriteString(`{
+			"setProjectPath": ""
+		}`)
+		fmt.Println("Config file created with default content.")
+	} else {
+		// Some other error occurred
+		fmt.Println(err)
+	}
 }
