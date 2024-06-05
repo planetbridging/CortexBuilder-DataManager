@@ -22,7 +22,7 @@ func createTestData(envPath string) {
 		headers := []string{"input1", "input2", "input3", "output1", "output2", "output3"}
 		writer.Write(headers)
 
-		writeData(writer, 10) // Writes 10 rows of data
+		writeData(writer, 10000) // Writes 10 rows of data
 	}
 }
 

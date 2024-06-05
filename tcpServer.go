@@ -4,10 +4,10 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"net"
-	"time"
 	"log"
+	"net"
 	"runtime"
+	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -93,46 +93,88 @@ func handleConnection(hub *Hub, client *Client, password string) {
 		message := string(buf[:n])
 		fmt.Printf("Received data from %s: %s\n", addr, message)
 
-		var response []byte
-		switch message {
-		case "ping":
+		//var response []byte
 
-			// Get OS info
-			osInfo := runtime.GOOS
+		var js map[string]interface{}
+		errCheckJson := json.Unmarshal([]byte(message), &js)
+		fmt.Println(js)
 
-			// Get RAM info
-			vmStat, err := mem.VirtualMemory()
-			if err != nil {
-				log.Fatalf("Error getting memory info: %v", err)
-			}
-			ramInfo := fmt.Sprintf("%.2fGB", float64(vmStat.Total)/(1024*1024*1024))
+		if errCheckJson != nil {
+			switch message {
+			case "ping":
 
-			// Get CPU info
-			cpuInfo, err := cpu.Info()
-			if err != nil {
-				log.Fatalf("Error getting CPU info: %v", err)
-			}
-			cpuModel := ""
-			if len(cpuInfo) > 0 {
-				cpuModel = fmt.Sprintf("%d cores %s", cpuInfo[0].Cores, cpuInfo[0].ModelName)
-			}
+				// Get OS info
+				osInfo := runtime.GOOS
 
-			serverInfo := ServerInfo{
-				OS:           osInfo,
-				RAM:          ramInfo,
-				CPU:          cpuModel,
-				ComputerType: "data",
+				// Get RAM info
+				vmStat, err := mem.VirtualMemory()
+				if err != nil {
+					log.Fatalf("Error getting memory info: %v", err)
+				}
+				ramInfo := fmt.Sprintf("%.2fGB", float64(vmStat.Total)/(1024*1024*1024))
+
+				// Get CPU info
+				cpuInfo, err := cpu.Info()
+				if err != nil {
+					log.Fatalf("Error getting CPU info: %v", err)
+				}
+				cpuModel := ""
+				if len(cpuInfo) > 0 {
+					cpuModel = fmt.Sprintf("%d cores %s", cpuInfo[0].Cores, cpuInfo[0].ModelName)
+				}
+
+				serverInfo := make(map[string]interface{})
+				serverInfo["OS"] = osInfo
+				serverInfo["RAM"] = ramInfo
+				serverInfo["CPU"] = cpuModel
+				serverInfo["ComputerType"] = "data"
+				serverInfo["type"] = "serverInfo"
+
+				response, err := json.Marshal(serverInfo)
+				if err != nil {
+					fmt.Printf("Error marshaling JSON: %v\n", err)
+					return
+				}
+
+				client.Conn.Write(response)
+				//default:
+				//	response = []byte(`{"error": "unknown command"}`)
 			}
-			response, err = json.Marshal(serverInfo)
-			if err != nil {
-				fmt.Printf("Error marshaling JSON: %v\n", err)
-				return
+		} else {
+			if value, ok := js["type"]; ok {
+				fmt.Println("Key exists, value: ", value)
+				switch js["type"] {
+				case "mountData":
+					fmt.Println("mount", js)
+					if path, ok := js["path"].(string); ok {
+						if _, ok := js["clientID"]; ok {
+							mountStatus := mountFile(path)
+							fmt.Println(mountStatus)
+							mountRes := make(map[string]interface{})
+							mountRes["type"] = "mountStatus"
+							mountRes["clientID"] = js["clientID"]
+							mountRes["path"] = js["path"]
+							mountRes["status"] = mountStatus
+							response, err := json.Marshal(mountRes)
+							if err != nil {
+								fmt.Printf("Error marshaling JSON: %v\n", err)
+								return
+							}
+
+							client.Conn.Write(response)
+						} else {
+							fmt.Println("clientID does not exist")
+						}
+					} else {
+						fmt.Println("path does not exist or is not a string")
+					}
+					break
+				}
+			} else {
+				fmt.Println("Key does not exist")
 			}
-		default:
-			response = []byte(`{"error": "unknown command"}`)
 		}
 
-		client.Conn.Write(response)
 	}
 }
 
