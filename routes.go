@@ -61,69 +61,66 @@ func setupRoutes(app *fiber.App) {
 		if err := c.BodyParser(m); err != nil {
 			return err
 		}
-	
+
 		// Compute absolute path of the requested path
 		absPath, err := filepath.Abs(filepath.Join(envPath, m.Path))
 		if err != nil {
 			return err
 		}
 		m.Path = absPath
-	
+
 		// Compute absolute path of envPath
 		absEnvPath, err := filepath.Abs(envPath)
 		if err != nil {
 			return err
 		}
-	
+
 		// Check if the path is within the envPath
-		if !strings.HasPrefix(m.Path, filepath.Clean(absEnvPath) + string(os.PathSeparator)) {
+		if !strings.HasPrefix(m.Path, filepath.Clean(absEnvPath)+string(os.PathSeparator)) {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid path: "+m.Path)
 		}
-	
+
 		// Write file with permissions
 		err = ioutil.WriteFile(m.Path, []byte(m.Data), 0644)
 		if err != nil {
 			return err
 		}
-	
+
 		return c.SendString("File created successfully")
 	})
-	
 
 	app.Post("/createfolder", func(c *fiber.Ctx) error {
 		m := new(Message)
 		if err := c.BodyParser(m); err != nil {
 			return err
 		}
-	
+
 		// Compute absolute path of the requested path
 		absPath, err := filepath.Abs(filepath.Join(envPath, m.Path))
 		if err != nil {
 			return err
 		}
 		m.Path = absPath
-	
+
 		// Compute absolute path of envPath
 		absEnvPath, err := filepath.Abs(envPath)
 		if err != nil {
 			return err
 		}
-	
+
 		// Check if the path is within the envPath
 		if !strings.HasPrefix(m.Path, filepath.Clean(absEnvPath)) {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid path: "+m.Path)
 		}
-	
+
 		err = os.MkdirAll(m.Path, 0755)
 		if err != nil {
 			return err
 		}
-	
+
 		return c.SendString("Folder created successfully")
 	})
-	
 
-	
 	app.Get("/path/*", func(c *fiber.Ctx) error {
 		//envPath := os.Getenv("FILE_PATH")
 		//fmt.Println(envPath)
@@ -186,10 +183,20 @@ func setupRoutes(app *fiber.App) {
 		return c.JSON(content[index])
 	})
 
+	app.Get("/mounted", func(c *fiber.Ctx) error {
+		// Get the status of all mounted files
+		mountedFiles, err := getStatus()
+		if err != nil {
+			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		}
+
+		// Return the status as JSON
+		return c.JSON(mountedFiles)
+	})
+
 }
 
-
-func oldWebSocket(app *fiber.App){
+func oldWebSocket(app *fiber.App) {
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
 		for {
 			_, msg, err := c.ReadMessage()
