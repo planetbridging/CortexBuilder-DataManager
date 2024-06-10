@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
@@ -49,7 +50,7 @@ func main() {
 
 	setupRoutes(app)
 
-
+	go startTcpDataServer()
 
 	envPWD = os.Getenv("SERVERPWD")
 	if envPWD == "" {
@@ -65,8 +66,7 @@ func main() {
 	}
 }
 
-
-func setupEmptyHost(){
+func setupEmptyHost() {
 	// Check if directory exists
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		// Create directory
