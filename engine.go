@@ -50,7 +50,7 @@ func main() {
 
 	setupRoutes(app)
 
-	go startTcpDataServer()
+	//go startTcpDataServer()
 
 	envPWD = os.Getenv("SERVERPWD")
 	if envPWD == "" {

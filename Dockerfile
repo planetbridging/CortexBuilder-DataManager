@@ -22,7 +22,6 @@ COPY . .
 # Expose ports 4123 and 12345 to the outside world
 EXPOSE 4123
 EXPOSE 12345
-EXPOSE 8923
 
 # Command to run the Go application
 CMD ["go", "run", "."]

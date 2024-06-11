@@ -5,7 +5,6 @@ services:
     ports:
       - "4123:4123"
       - "12345:12345"
-      - "8923:8923"
     volumes:
       - .:/app
     environment:
